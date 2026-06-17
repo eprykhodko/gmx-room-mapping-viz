@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Room Mapping Visualizer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="app-header">
+      <h1>Room Mapping Visualizer</h1>
+      <p class="subtitle">Paste XML or JSON payload data and parse it.</p>
+    </header>
+    <section class="input-panel">
+      <label for="payloadInput">Payload input</label>
+      <textarea id="payloadInput" spellcheck="false" placeholder="Paste XML or JSON here"></textarea>
+      <div class="input-actions">
+        <button id="parseButton" type="button">Parse (auto-detect XML/JSON)</button>
+      </div>
+      <p id="statusMessage" class="status" aria-live="polite"></p>
+      <p id="errorMessage" class="error" aria-live="assertive"></p>
+    </section>
+    <section id="resultsSection" class="results hidden">
+      <div class="hotel-header">
+        <div>
+          <h2 id="hotelName">Hotel</h2>
+          <p id="payloadSummary" class="payload-summary"></p>
+        </div>
+        <button id="toggleAllRoomsButton" class="secondary-button" type="button">Collapse all rates</button>
+      </div>
+      <div id="roomsContainer" class="rooms-container"></div>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
