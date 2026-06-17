@@ -1,0 +1,132 @@
+Project: Room Mapping Visualizer (static SPA)
+
+1) Purpose
+- Single-page app to visualize hotel -> rooms -> rates from pasted payloads.
+- Supports both XML and JSON inputs.
+- No backend, no build step, deploys directly to GitHub Pages.
+
+2) Stack + Runtime
+- Plain HTML/CSS/Vanilla JS.
+- Entry files:
+  - index.html
+  - styles.css
+  - app.js
+- Script is loaded directly in browser (`<script src="app.js">`), no bundler.
+
+3) High-level flow
+- User pastes payload in textarea and clicks Parse.
+- `autoDetectAndParse()` tries XML/JSON based on first char (with fallback).
+- Payload is normalized to one model:
+  - hotel: { hotelName, rooms[] }
+  - room: { id, name, description, roomType, bedType, accessible, amenities[], images[], rates[] }
+  - rate: { id, name, description, provider, priceValue, currency, roomExtras[], mealPlan }
+- `render()` rebuilds the room cards from state.
+
+4) Core state (app.js)
+- Global `state` object:
+  - sourceType: 'xml' | 'json' | ''
+  - hotel: normalized model or null
+  - roomUi: per-room UI state map
+- Per-room UI state (`getRoomUiState`):
+  - collapsed: rates section collapsed/expanded
+  - activeProviders: array of enabled providers for tag filtering
+  - carouselIndex: current image index
+
+5) Parsing details
+
+XML (`parseXmlPayload`)
+- Namespace-agnostic lookup via localName helpers:
+  - `descendantsByLocalName`
+  - `firstDescendantByLocalName`
+- Hotel:
+  - `HotelInfo@HotelName`
+- Room:
+  - ID: `Room@RoomID` (fallback generated)
+  - name: `RoomDescription@Name`
+  - description: `RoomDescription/Text` (fallback text content)
+  - roomType: `Room@RoomType`
+  - bedType: `BedType@Description` (fallback nested Description text)
+  - accessible: `Room@AccessibleRoom` (default false when missing)
+- Rate:
+  - name: `RatePlan@RatePlanName`
+  - description: `RatePlanDescription/Text`
+  - price: `ConvertedRateInfo@AverageNightlyRateBeforeTax`
+  - currency: `ConvertedRateInfo@CurrencyCode` (default USD)
+  - room extras: each `RoomExtra@Description` (deduped)
+  - meal plan: `MealsIncluded@MealPlanDescription`
+  - provider: fixed `Sabre`
+- Rates are sorted ascending by price.
+
+JSON (`parseJsonPayload`)
+- Expects top-level object with `rooms[]` and `rates[]`.
+- Hotel:
+  - `hotel_name` (fallback `hotelName`)
+- Room:
+  - id: `room_id` (fallback `id` / `roomId`)
+  - name: `room_name` (fallback `name`)
+  - description: `room_description` (fallback `description`)
+  - amenities: raw `room_amenities` (fallback `amenities`)
+  - images: `room_images` (string or object with `url`, optional `description`)
+- Rate:
+  - linked by `room_id` (fallback `roomId` / `room`)
+  - description: `rate_description` (fallback `description`)
+  - provider: `provider` (fallback `Unknown`)
+  - currency: `currency` (fallback `local_currency`, default USD)
+  - price picks first finite among:
+    - `average`
+    - `average_before_taxes_usd`
+    - `average_after_taxes_usd`
+    - `local_average`
+    - `total`
+- Rates are sorted ascending by price.
+
+6) UI behavior (current)
+- Hotel-level button toggles collapse/expand for all rates sections.
+- Room card is 2-column:
+  - left: image carousel
+  - right: room info + providers + rates
+- Per-room rates collapse button collapses only rates list (not room info or image).
+- Provider filter is tag-based:
+  - click provider tag to activate/deactivate
+  - rate list updates to active providers only
+  - title shows `Rates (visible/total)`
+- If no images: placeholder card.
+- Prices render as `CURRENCY 0.00` (or `CURRENCY --` when missing).
+
+7) Important functions to edit
+- Parsing entry:
+  - `autoDetectAndParse`
+  - `parseXmlPayload`
+  - `parseJsonPayload`
+- Main render:
+  - `render`
+  - `buildRoomCard`
+  - `buildRateCard`
+  - `buildCarousel`
+- Filtering/collapse:
+  - `onRoomsContainerClick`
+  - `getFilteredRates`
+  - `getRoomProviders`
+  - `areAllRoomsCollapsed`
+
+8) Styling structure (styles.css)
+- Layout:
+  - `.room-body`, `.room-media`, `.room-info`
+- Providers:
+  - `.provider-tags`, `.provider-tag`, `.is-active`, `.is-inactive`
+- Rates:
+  - `.rates-section`, `.rates-header`, `.rate-list`, `.rate-card`
+
+9) Repo/deploy notes
+- GitHub Pages serves from `main` branch root (`/`).
+- Live URL:
+  - https://eprykhodko.github.io/gmx-room-mapping-viz/
+- Not committed by design:
+  - `images/`
+  - `samples/`
+  (see `.gitignore`)
+
+10) Safe extension ideas
+- Add sorting modes (provider/name/refundability) in `buildRoomCard` + helpers.
+- Add additional payload fields by extending normalized model only, keep UI generic.
+- Keep XML lookup namespace-agnostic (`localName`) to avoid prefix breakage.
