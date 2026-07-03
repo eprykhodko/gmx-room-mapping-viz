@@ -98,6 +98,22 @@ button:disabled {
   background: #dde6ee;
 }
 
+.link-button {
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: none;
+  color: #156fcb;
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.link-button:hover {
+  background: none;
+  color: #0f5ea8;
+}
+
 .status,
 .error {
   margin: 8px 0 0;
@@ -140,6 +156,8 @@ button:disabled {
 .rooms-container {
   display: grid;
   gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(540px, 1fr));
+  align-items: start;
 }
 
 .room-card {
@@ -194,6 +212,22 @@ button:disabled {
 
 .room-description {
   margin: 0;
+}
+
+.room-description > :first-child {
+  margin-top: 0;
+}
+
+.room-description > :last-child {
+  margin-bottom: 0;
+}
+
+.room-description-preview {
+  margin: 0;
+}
+
+.room-description-toggle {
+  margin-top: 4px;
 }
 
 .filter-row {
@@ -297,6 +331,10 @@ select {
   border-top: 1px solid var(--border);
   margin-top: 4px;
   padding-top: 10px;
+}
+
+.rates-section-full {
+  grid-column: 1 / -1;
 }
 
 .rates-header {

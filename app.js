@@ -14,6 +14,7 @@
     hotel: null,
     roomUi: {}
   };
+  const ROOM_DESCRIPTION_PREVIEW_LIMIT = 200;
 
   parseButton.addEventListener('click', onParseClicked);
   toggleAllRoomsButton.addEventListener('click', onToggleAllRooms);
@@ -73,6 +74,12 @@
     const ui = getRoomUiState(roomId);
     if (action === 'toggle-room') {
       ui.collapsed = !ui.collapsed;
+      render();
+      return;
+    }
+
+    if (action === 'toggle-description') {
+      ui.descriptionExpanded = !ui.descriptionExpanded;
       render();
       return;
     }
@@ -157,7 +164,10 @@
     roomMedia.append(buildCarousel(room, ui));
 
     if (room.description) {
-      roomInfo.append(createElement('p', 'room-description', room.description));
+      const descriptionNode = buildRoomDescription(room, ui);
+      if (descriptionNode) {
+        roomInfo.append(descriptionNode);
+      }
     }
 
     if (room.amenities.length > 0) {
@@ -191,7 +201,7 @@
 
     const filteredRates = getFilteredRates(room, ui.activeProviders);
 
-    const ratesSection = createElement('section', 'rates-section');
+    const ratesSection = createElement('section', 'rates-section rates-section-full');
     const ratesHeader = createElement('div', 'rates-header');
     const ratesTitle = createElement('h4', 'rates-title', `Rates (${filteredRates.length}/${room.rates.length})`);
     const toggleRatesButton = createElement('button', 'secondary-button', ui.collapsed ? 'Expand rates' : 'Collapse rates');
@@ -212,10 +222,44 @@
       ratesSection.append(rateList);
     }
 
-    roomInfo.append(ratesSection);
-    roomBody.append(roomMedia, roomInfo);
+    roomBody.append(roomMedia, roomInfo, ratesSection);
     roomCard.append(roomBody);
     return roomCard;
+  }
+
+  function buildRoomDescription(room, ui) {
+    const sanitizedDescription = sanitizeHtml(room.description);
+    if (!sanitizedDescription) {
+      return null;
+    }
+
+    const descriptionText = htmlToPlainText(sanitizedDescription);
+    const canCollapse = descriptionText.length > ROOM_DESCRIPTION_PREVIEW_LIMIT;
+    const isExpanded = ui.descriptionExpanded || !canCollapse;
+
+    const descriptionNode = createElement('div', 'room-description');
+    if (isExpanded) {
+      const descriptionContent = createElement('div', 'room-description-content');
+      descriptionContent.innerHTML = sanitizedDescription;
+      descriptionNode.append(descriptionContent);
+    } else {
+      const previewText = `${descriptionText.slice(0, ROOM_DESCRIPTION_PREVIEW_LIMIT).trimEnd()}...`;
+      descriptionNode.append(createElement('p', 'room-description-preview', previewText));
+    }
+
+    if (canCollapse) {
+      const toggleDescriptionButton = createElement(
+        'button',
+        'link-button room-description-toggle',
+        isExpanded ? 'show less' : 'show more...'
+      );
+      toggleDescriptionButton.type = 'button';
+      toggleDescriptionButton.dataset.action = 'toggle-description';
+      toggleDescriptionButton.dataset.roomId = room.id;
+      descriptionNode.append(toggleDescriptionButton);
+    }
+
+    return descriptionNode;
   }
 
   function buildCarousel(room, ui) {
@@ -510,6 +554,43 @@
     return node;
   }
 
+
+  function sanitizeHtml(rawHtml) {
+    const template = document.createElement('template');
+    template.innerHTML = String(rawHtml || '');
+
+    const blockedTags = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'LINK', 'META', 'BASE', 'FORM']);
+    const elements = template.content.querySelectorAll('*');
+    elements.forEach((element) => {
+      if (blockedTags.has(element.tagName)) {
+        element.remove();
+        return;
+      }
+
+      Array.from(element.attributes).forEach((attribute) => {
+        const name = attribute.name.toLowerCase();
+        const value = attribute.value.trim().toLowerCase();
+
+        if (name.startsWith('on') || name === 'srcdoc' || name === 'style') {
+          element.removeAttribute(attribute.name);
+          return;
+        }
+
+        if ((name === 'href' || name === 'src' || name === 'xlink:href') && value.startsWith('javascript:')) {
+          element.removeAttribute(attribute.name);
+        }
+      });
+    });
+
+    return template.innerHTML.trim();
+  }
+
+  function htmlToPlainText(html) {
+    const template = document.createElement('template');
+    template.innerHTML = String(html || '');
+    return cleanString(template.content.textContent || '');
+  }
+
   function descendantsByLocalName(root, localName) {
     if (!root || !localName) {
       return [];
@@ -618,7 +699,8 @@
       state.roomUi[roomId] = {
         collapsed: false,
         activeProviders: null,
-        carouselIndex: 0
+        carouselIndex: 0,
+        descriptionExpanded: false
       };
     }
     return state.roomUi[roomId];
@@ -630,7 +712,8 @@
       nextState[room.id] = {
         collapsed: false,
         activeProviders: null,
-        carouselIndex: 0
+        carouselIndex: 0,
+        descriptionExpanded: false
       };
     });
     state.roomUi = nextState;
