@@ -130,7 +130,22 @@
     hotelNameNode.textContent = state.hotel.hotelName || 'Hotel';
 
     const totalRates = state.hotel.rooms.reduce((sum, room) => sum + room.rates.length, 0);
-    payloadSummary.textContent = `Source: ${state.sourceType.toUpperCase()} • Rooms: ${state.hotel.rooms.length} • Rates: ${totalRates}`;
+    const roomStats = state.hotel.rooms.reduce(
+      (stats, room) => {
+        const supplierCount = getRoomProviders(room).length;
+        if (supplierCount === 1) {
+          stats.roomsWithOneSupplier += 1;
+        } else if (supplierCount === 2) {
+          stats.roomsWithTwoSuppliers += 1;
+        }
+        if (room.rates.length === 1) {
+          stats.roomsWithOneRate += 1;
+        }
+        return stats;
+      },
+      { roomsWithOneSupplier: 0, roomsWithTwoSuppliers: 0, roomsWithOneRate: 0 }
+    );
+    payloadSummary.textContent = `Source: ${state.sourceType.toUpperCase()} • Rooms: ${state.hotel.rooms.length} • Rates: ${totalRates}\nRoom with only one supplier: ${roomStats.roomsWithOneSupplier} • Room with only two suppliers: ${roomStats.roomsWithTwoSuppliers} • Rooms with only one rate: ${roomStats.roomsWithOneRate}`;
 
     toggleAllRoomsButton.textContent = areAllRoomsCollapsed() ? 'Expand all rates' : 'Collapse all rates';
     roomsContainer.replaceChildren(...state.hotel.rooms.map(buildRoomCard));
